@@ -6,8 +6,12 @@
 //
 
 import UIKit
+import ReactorKit
+import RxCocoa
 
 class FruitViewController: UIViewController {
+    let disposeBag = DisposeBag()
+    let fruitReactor = FruitReactor()
     
     // MARK: Properties
     private lazy var appleButton: UIButton = {
@@ -30,7 +34,6 @@ class FruitViewController: UIViewController {
     
     private lazy var selectedLabel: UILabel = {
         let label = UILabel()
-        label.text = "선택되어진 과일 없음"
         return label
     }()
     
@@ -46,7 +49,8 @@ class FruitViewController: UIViewController {
     // MARK: Lifecycles
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        configureUI()
+        bind(reactor: fruitReactor)
     }
 
     func configureUI() {
@@ -56,5 +60,37 @@ class FruitViewController: UIViewController {
         stack.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true
     }
 
+    // MARK: Helpers
+    func bind(reactor: FruitReactor) {
+        appleButton.rx.tap.map { return FruitReactor.Action.apple }
+            .bind(to: reactor.action)
+            .disposed(by: disposeBag)
+        
+        bananaButton.rx.tap.map { return FruitReactor.Action.banana }
+            .bind(to: reactor.action)
+            .disposed(by: disposeBag)
+        
+        grapeButton.rx.tap.map { return FruitReactor.Action.grapes }
+            .bind(to: reactor.action)
+            .disposed(by: disposeBag)
+        
+        reactor.state.map { $0.fruitName }
+        .distinctUntilChanged()
+        .map { $0 }
+        .subscribe(onNext: { value in
+            self.selectedLabel.text = value
+        })
+        .disposed(by: disposeBag)
+        
+        reactor.state.map { $0.isLoading }
+        .distinctUntilChanged()
+        .map { $0 }
+        .subscribe(onNext: { value in
+            if value == true {
+                self.selectedLabel.text = "로딩중입니다"
+            }
+        })
+        .disposed(by: disposeBag)
+    }
 }
 
